@@ -1,0 +1,72 @@
+{
+  "name": "wayland-global-shortcuts",
+  "version": "0.0.1-debug",
+  "description": "Global shortcuts on Wayland (and XWayland) through the XDG Desktop Portal.",
+  "exports": {
+    ".": {
+      "types": "./dist/main.d.ts",
+      "default": "./dist/main.js"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "LICENSE",
+    "!dist/**/*.map"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && webpack",
+    "build:dev": "npm run clean && NODE_ENV=development webpack",
+    "dev": "webpack --mode development --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "sample": "electron --trace-warnings --ozone-platform=x11 test/sample.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ECRomaneli/wayland-global-shortcuts.git"
+  },
+  "keywords": [
+    "wayland",
+    "xwayland",
+    "global-shortcuts",
+    "global-shortcut",
+    "globalshortcut",
+    "hotkey",
+    "xdg-desktop-portal",
+    "portal",
+    "dbus",
+    "linux",
+    "gnome",
+    "kde",
+    "electron"
+  ],
+  "author": "ECRomaneli",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ECRomaneli/wayland-global-shortcuts/issues"
+  },
+  "homepage": "https://github.com/ECRomaneli/wayland-global-shortcuts#readme",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "os": [
+    "linux"
+  ],
+  "dependencies": {
+    "dbus-next": "^0.10.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "@types/node": "^26.6.4",
+    "electron": "^44.5.1",
+    "eslint": "^10.12.0",
+    "terser-webpack-plugin": "^5.6.1",
+    "ts-loader": "^9.6.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.0",
+    "webpack": "^5.111.1",
+    "webpack-cli": "^7.2.3"
+  }
+}
