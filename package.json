@@ -48,14 +48,11 @@
   },
   "homepage": "https://github.com/ECRomaneli/wayland-global-shortcuts#readme",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "os": [
     "linux"
   ],
-  "dependencies": {
-    "dbus-next": "^0.10.2"
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@stylistic/eslint-plugin": "^5.10.0",
@@ -68,5 +65,8 @@
     "typescript-eslint": "^8.71.0",
     "webpack": "^5.111.1",
     "webpack-cli": "^7.2.3"
+  },
+  "dependencies": {
+    "dbus-native": "^0.16.1"
   }
 }

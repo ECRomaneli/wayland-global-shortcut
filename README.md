@@ -24,7 +24,7 @@ The `wayland-global-shortcuts` package registers shortcuts through the [`org.fre
 
 ### Highlights
 
-- **Pure JavaScript** — talks to D-Bus through [`dbus-next`](https://www.npmjs.com/package/dbus-next), no native build required.
+- **Pure JavaScript** — talks to D-Bus through [`dbus-native`](https://www.npmjs.com/package/dbus-native), no native build required.
 - **Framework agnostic** — works with Electron, NW.js or plain Node.js processes.
 - **Accelerator syntax** — uses the familiar `CmdOrCtrl+Shift+H` syntax (the same as Electron) and converts it to the [XDG shortcuts spec](https://specifications.freedesktop.org/shortcuts-spec/latest/).
 - **Promise based** — every registration resolves after the portal (and the user) answers.

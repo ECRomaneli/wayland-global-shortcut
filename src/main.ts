@@ -1,8 +1,7 @@
-import { Message, MessageBus, MessageLike, MessageType, sessionBus, Variant } from 'dbus-next';
+import { DBusClient, DBusMethodCall, DBusSignal } from './DBusClient';
 import { toXdgTrigger } from './XdgTrigger';
 
-type Bus = MessageBus & { name?: string | null };
-type PortalResults = Record<string, Variant>;
+type PortalResults = Record<string, unknown>;
 type PortalResponse = { code: number, results: PortalResults };
 type PendingRequest = { resolve: (response: PortalResponse) => void, reject: (error: Error) => void };
 type Shortcut = { id: string, description: string, callback: () => void };
@@ -51,7 +50,7 @@ export class WaylandGlobalShortcuts {
   private readonly shortcuts = new Map<string, Shortcut>();
   private readonly pendingRequests = new Map<string, PendingRequest>();
   private queue: Promise<unknown> = Promise.resolve();
-  private bus?: Bus;
+  private bus?: DBusClient;
   private sessionPath?: string;
   private tokenCounter = 0;
 
@@ -173,20 +172,15 @@ export class WaylandGlobalShortcuts {
     return false;
   }
 
-  private async connect(): Promise<Bus> {
+  private async connect(): Promise<DBusClient> {
     if (this.bus) { return this.bus; }
 
-    const bus: Bus = sessionBus();
-    await new Promise<void>((resolve, reject) => {
-      bus.once('connect', resolve);
-      bus.once('error', reject);
-    });
-
-    bus.on('error', (e) => {
-      console.error(LOG_PREFIX, 'D-Bus connection error:', e);
+    const bus = await DBusClient.connect();
+    bus.onDisconnect((e) => {
+      console.error(LOG_PREFIX, 'D-Bus connection lost:', e);
       this.disconnect(bus, e);
     });
-    bus.on('message', (msg) => this.onMessage(msg));
+    bus.onSignal((signal) => this.onSignal(signal));
 
     try {
       await this.addMatch(bus, REQUEST_IFACE, 'Response');
@@ -201,18 +195,18 @@ export class WaylandGlobalShortcuts {
     return bus;
   }
 
-  private disconnect(bus: Bus, error: Error): void {
+  private disconnect(bus: DBusClient, error: Error): void {
     if (this.bus === bus) {
       this.bus = undefined;
       this.sessionPath = undefined;
     }
     this.pendingRequests.forEach((pending) => pending.reject(error));
     this.pendingRequests.clear();
-    try { bus.disconnect(); } catch { /* already closed */ }
+    bus.close();
   }
 
-  private addMatch(bus: Bus, iface: string, member: string): Promise<Message> {
-    return call(bus, {
+  private addMatch(bus: DBusClient, iface: string, member: string): Promise<unknown[]> {
+    return bus.call({
       destination: DBUS_NAME,
       path: DBUS_PATH,
       interface: DBUS_NAME,
@@ -223,13 +217,13 @@ export class WaylandGlobalShortcuts {
   }
 
   /** Associates this connection with the app ID. Required for unsandboxed apps on recent portals. */
-  private async registerAppId(bus: Bus): Promise<void> {
+  private async registerAppId(bus: DBusClient): Promise<void> {
     if (!this.appId) {
       console.warn(LOG_PREFIX, 'No app ID available, the portal may reject shortcuts.');
       return;
     }
     try {
-      await call(bus, portalMessage(REGISTRY_IFACE, 'Register', 'sa{sv}', [this.appId, {}]));
+      await bus.call(portalMessage(REGISTRY_IFACE, 'Register', 'sa{sv}', [this.appId, {}]));
     } catch (e) {
       console.warn(LOG_PREFIX, `Failed to register the app ID "${this.appId}", the portal may reject shortcuts:`, e);
     }
@@ -238,21 +232,21 @@ export class WaylandGlobalShortcuts {
   private async createSession(): Promise<string> {
     const results = await this.request('CreateSession', 'a{sv}', (options) => [{
       ...options,
-      session_handle_token: variant(this.nextToken()),
+      session_handle_token: this.nextToken(),
     }]);
-    return results.session_handle.value as string;
+    return results.session_handle as string;
   }
 
   /** @returns IDs of the shortcuts accepted by the portal. */
   private async bindShortcuts(sessionPath: string, list: Shortcut[]): Promise<string[]> {
     const shortcuts = list.map((s) => [s.id, {
-      description: variant(s.description),
-      preferred_trigger: variant(s.id),
+      description: s.description,
+      preferred_trigger: s.id,
     }]);
     const results = await this.request('BindShortcuts', 'oa(sa{sv})sa{sv}', (options) => [
       sessionPath, shortcuts, '', options,
     ]);
-    const bound = (results.shortcuts?.value ?? []) as [string, PortalResults][];
+    const bound = (results.shortcuts ?? []) as [string, PortalResults][];
     return bound.map(([id]) => id);
   }
 
@@ -261,7 +255,7 @@ export class WaylandGlobalShortcuts {
     this.sessionPath = undefined;
     if (!sessionPath || !this.bus) { return; }
     try {
-      await call(this.bus, { destination: PORTAL_NAME, path: sessionPath, interface: SESSION_IFACE, member: 'Close' });
+      await this.bus.call({ destination: PORTAL_NAME, path: sessionPath, interface: SESSION_IFACE, member: 'Close' });
     } catch (e) {
       console.warn(LOG_PREFIX, 'Failed to close the portal session:', e);
     }
@@ -273,7 +267,7 @@ export class WaylandGlobalShortcuts {
   ): Promise<PortalResults> {
     const bus = this.bus!;
     const token = this.nextToken();
-    const sender = bus.name!.slice(1).replace(/\./g, '_');
+    const sender = bus.uniqueName.slice(1).replace(/\./g, '_');
     let requestPath = `${PORTAL_PATH}/request/${sender}/${token}`;
 
     const response = new Promise<PortalResponse>((resolve, reject) => {
@@ -281,10 +275,9 @@ export class WaylandGlobalShortcuts {
     });
 
     try {
-      const reply = await call(bus, portalMessage(SHORTCUTS_IFACE, member, signature, body({
-        handle_token: variant(token),
-      })));
-      const handle = reply.body[0] as string;
+      const [handle] = await bus.call(portalMessage(SHORTCUTS_IFACE, member, signature, body({
+        handle_token: token,
+      }))) as [string];
       if (handle !== requestPath) {
         this.pendingRequests.set(handle, this.pendingRequests.get(requestPath)!);
         this.pendingRequests.delete(requestPath);
@@ -298,9 +291,7 @@ export class WaylandGlobalShortcuts {
     }
   }
 
-  private onMessage(msg: Message): void {
-    if (msg.type !== MessageType.SIGNAL) { return; }
-
+  private onSignal(msg: DBusSignal): void {
     if (msg.interface === REQUEST_IFACE && msg.member === 'Response') {
       const [code, results] = msg.body as [number, PortalResults];
       this.pendingRequests.get(msg.path)?.resolve({ code, results: results ?? {} });
@@ -323,16 +314,8 @@ export class WaylandGlobalShortcuts {
   }
 }
 
-async function call(bus: Bus, msg: MessageLike): Promise<Message> {
-  return (await bus.call(new Message(msg)))!;
-}
-
-function portalMessage(iface: string, member: string, signature: string, body: unknown[]): MessageLike {
+function portalMessage(iface: string, member: string, signature: string, body: unknown[]): DBusMethodCall {
   return { destination: PORTAL_NAME, path: PORTAL_PATH, interface: iface, member, signature, body };
-}
-
-function variant(value: string): Variant<string> {
-  return new Variant('s', value);
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {

@@ -28,7 +28,7 @@ module.exports = [
       extensions: ['.ts', '.js'],
     },
     externals: {
-      'dbus-next': 'commonjs2 dbus-next',
+      'dbus-native': 'commonjs2 dbus-native',
     },
     optimization: {
       minimize: !isDev,
