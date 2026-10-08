@@ -2,25 +2,25 @@
     Global shortcuts on Wayland and XWayland through the XDG Desktop Portal
 </p>
 <p align='center'>
-    <a href="https://github.com/ECRomaneli/wayland-global-shortcuts/tags"><img src="https://img.shields.io/github/v/tag/ecromaneli/wayland-global-shortcuts?label=version&sort=semver&style=for-the-badge" alt="Version"></a>
-    <a href="https://github.com/ECRomaneli/wayland-global-shortcuts/commits/master"><img src="https://img.shields.io/github/last-commit/ecromaneli/wayland-global-shortcuts?style=for-the-badge" alt="Last Commit"></a>
-    <a href="https://github.com/ECRomaneli/wayland-global-shortcuts/blob/master/LICENSE"><img src="https://img.shields.io/github/license/ecromaneli/wayland-global-shortcuts?style=for-the-badge" alt="License"></a>
-    <a href="https://github.com/ECRomaneli/wayland-global-shortcuts/issues"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=for-the-badge" alt="Contributions Welcome"></a>
+    <a href="https://github.com/ECRomaneli/wayland-global-shortcut/tags"><img src="https://img.shields.io/github/v/tag/ecromaneli/wayland-global-shortcut?label=version&sort=semver&style=for-the-badge" alt="Version"></a>
+    <a href="https://github.com/ECRomaneli/wayland-global-shortcut/commits/master"><img src="https://img.shields.io/github/last-commit/ecromaneli/wayland-global-shortcut?style=for-the-badge" alt="Last Commit"></a>
+    <a href="https://github.com/ECRomaneli/wayland-global-shortcut/blob/master/LICENSE"><img src="https://img.shields.io/github/license/ecromaneli/wayland-global-shortcut?style=for-the-badge" alt="License"></a>
+    <a href="https://github.com/ECRomaneli/wayland-global-shortcut/issues"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=for-the-badge" alt="Contributions Welcome"></a>
 </p>
 
 ## Installation
 
-Install the `wayland-global-shortcuts` package via [npm](https://www.npmjs.com/package/wayland-global-shortcuts):
+Install the `wayland-global-shortcut` package via [npm](https://www.npmjs.com/package/wayland-global-shortcut):
 
 ```sh
-npm install wayland-global-shortcuts
+npm install wayland-global-shortcut
 ```
 
 ## Overview
 
 Wayland compositors do not allow applications to grab keys directly. Apps running under **XWayland** are affected too: X11 key grabs only receive events while an X11 window is focused, so "global" shortcuts silently become "focused-only" shortcuts.
 
-The `wayland-global-shortcuts` package registers shortcuts through the [`org.freedesktop.portal.GlobalShortcuts`](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.GlobalShortcuts.html) D-Bus portal, which is the standard way for any Wayland client (native or XWayland) to receive shortcuts regardless of focus.
+The `wayland-global-shortcut` package registers shortcuts through the [`org.freedesktop.portal.GlobalShortcuts`](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.GlobalShortcuts.html) D-Bus portal, which is the standard way for any Wayland client (native or XWayland) to receive shortcuts regardless of focus.
 
 ### Highlights
 
@@ -44,13 +44,13 @@ All public methods are documented with JSDoc and can be referenced during import
 ### Importing
 
 ```js
-const { WaylandGlobalShortcuts } = require('wayland-global-shortcuts')
+const { WaylandGlobalShortcut } = require('wayland-global-shortcut')
 ```
 
 ### Creating an Instance
 
 ```js
-const shortcuts = new WaylandGlobalShortcuts({ appId: 'com.example.MyApp' })
+const shortcuts = new WaylandGlobalShortcut({ appId: 'com.example.MyApp' })
 ```
 
 | Option    | Type     | Default                              | Description                                                        |
@@ -90,7 +90,7 @@ Electron's `globalShortcut` already uses the portal on **native** Wayland. When 
 
 ```js
 const { app, globalShortcut } = require('electron')
-const { WaylandGlobalShortcuts } = require('wayland-global-shortcuts')
+const { WaylandGlobalShortcut } = require('wayland-global-shortcut')
 
 const isXWayland = process.platform === 'linux'
   && process.argv.includes('--ozone-platform=x11')
@@ -99,7 +99,7 @@ const isXWayland = process.platform === 'linux'
 app.whenReady().then(async () => {
   const toggle = () => { /* ... */ }
   if (isXWayland) {
-    await new WaylandGlobalShortcuts().register('CmdOrCtrl+Shift+H', toggle, { description: 'Toggle window' })
+    await new WaylandGlobalShortcut().register('CmdOrCtrl+Shift+H', toggle, { description: 'Toggle window' })
   } else {
     globalShortcut.register('CmdOrCtrl+Shift+H', toggle)
   }
@@ -111,7 +111,7 @@ app.whenReady().then(async () => {
 The accelerator conversion is also exported:
 
 ```js
-const { toXdgTrigger } = require('wayland-global-shortcuts')
+const { toXdgTrigger } = require('wayland-global-shortcut')
 
 toXdgTrigger('CmdOrCtrl+Shift+H') // 'CTRL+SHIFT+h'
 toXdgTrigger('Alt+Plus')          // 'ALT+SHIFT+equal'
@@ -183,4 +183,4 @@ Created by [Emerson Capuchi Romaneli](https://github.com/ECRomaneli) (@ECRomanel
 
 ## License
 
-This project is licensed under the [MIT License](https://github.com/ECRomaneli/wayland-global-shortcuts/blob/master/LICENSE).
+This project is licensed under the [MIT License](https://github.com/ECRomaneli/wayland-global-shortcut/blob/master/LICENSE).

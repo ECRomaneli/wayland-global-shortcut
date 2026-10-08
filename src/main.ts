@@ -6,8 +6,8 @@ type PortalResponse = { code: number, results: PortalResults };
 type PendingRequest = { resolve: (response: PortalResponse) => void, reject: (error: Error) => void };
 type Shortcut = { id: string, description: string, callback: () => void };
 
-/** Options for {@link WaylandGlobalShortcuts}. */
-export interface WaylandGlobalShortcutsOptions {
+/** Options for {@link WaylandGlobalShortcut}. */
+export interface WaylandGlobalShortcutOptions {
   /**
    * Reverse-DNS app ID matching the installed `.desktop` file (e.g. `com.example.MyApp`).
    * Required by recent portals for unsandboxed apps. Defaults to the `CHROME_DESKTOP`
@@ -32,7 +32,7 @@ const SHORTCUTS_IFACE = 'org.freedesktop.portal.GlobalShortcuts';
 const REQUEST_IFACE = 'org.freedesktop.portal.Request';
 const SESSION_IFACE = 'org.freedesktop.portal.Session';
 const REGISTRY_IFACE = 'org.freedesktop.host.portal.Registry';
-const LOG_PREFIX = '[WaylandGlobalShortcuts]';
+const LOG_PREFIX = '[WaylandGlobalShortcut]';
 
 /**
  * Global shortcuts through the `org.freedesktop.portal.GlobalShortcuts` D-Bus portal.
@@ -44,7 +44,7 @@ const LOG_PREFIX = '[WaylandGlobalShortcuts]';
  * binds the whole set again. The desktop may show a consent dialog, and the returned
  * promises only settle after the user answers it.
  */
-export class WaylandGlobalShortcuts {
+export class WaylandGlobalShortcut {
   private readonly appId: string;
   private readonly timeout: number;
   private readonly shortcuts = new Map<string, Shortcut>();
@@ -54,7 +54,7 @@ export class WaylandGlobalShortcuts {
   private sessionPath?: string;
   private tokenCounter = 0;
 
-  constructor(options: WaylandGlobalShortcutsOptions = {}) {
+  constructor(options: WaylandGlobalShortcutOptions = {}) {
     this.appId = options.appId ?? (process.env.CHROME_DESKTOP ?? '').replace(/\.desktop$/, '');
     this.timeout = options.timeout ?? 10_000;
   }
