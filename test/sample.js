@@ -1,15 +1,15 @@
 /**
  * Sample usage with Electron. On a Wayland session, run with `npm run sample` (forces XWayland).
  * A `.desktop` file matching the app ID must be installed for the portal to accept the shortcuts:
- * ~/.local/share/applications/com.github.ecromaneli.wayland-global-shortcuts.desktop
+ * ~/.local/share/applications/com.github.ecromaneli.wayland-global-shortcut.desktop
  *
  * Use the "Shortcuts" menu to unregister and register the shortcuts again.
  */
 const { app, BrowserWindow, Menu } = require('electron');
-const { WaylandGlobalShortcuts, toXdgTrigger } = require('wayland-global-shortcuts');
+const { WaylandGlobalShortcut, toXdgTrigger } = require('wayland-global-shortcut');
 
-const APP_ID = 'com.github.ecromaneli.wayland-global-shortcuts';
-const shortcuts = new WaylandGlobalShortcuts({ appId: APP_ID });
+const APP_ID = 'com.github.ecromaneli.wayland-global-shortcut';
+const shortcuts = new WaylandGlobalShortcut({ appId: APP_ID });
 
 let window;
 
