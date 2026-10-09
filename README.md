@@ -68,6 +68,12 @@ const ok = await shortcuts.register('CmdOrCtrl+Shift+H', () => {
 
 The `description` is shown by the desktop in the consent dialog and in the system shortcut settings. If not specified, the accelerator is used.
 
+By default, the callback is called when the shortcut is **released**. The compositor keeps the key events of an active shortcut, so a window focused while the keys are still held down may never receive the key release, leaving the last key stuck (e.g. the `W` of `Ctrl+W` repeating in a text field). To call it as soon as the keys are pressed, use `trigger: 'press'`:
+
+```js
+await shortcuts.register('CmdOrCtrl+Shift+J', callback, { trigger: 'press' })
+```
+
 To register multiple shortcuts with a **single consent dialog**, use `registerAll`:
 
 ```js
@@ -126,7 +132,7 @@ toXdgTrigger('Ctrl+Foo')          // throws TypeError
 2. A portal session is created and all shortcuts are bound with a single `BindShortcuts` call, using the XDG trigger as both the shortcut ID and the `preferred_trigger`.
 3. The desktop may show a consent dialog. The returned promise resolves only after the user accepts or dismisses it.
 4. The portal allows a single bind per session, so every change (register/unregister) closes the session and binds the full set again. If a bind fails, the previous set is restored.
-5. `Activated` signals from the current session call the matching callback.
+5. `Deactivated` (release) or `Activated` (press) signals from the current session call the matching callback, according to its `trigger`.
 
 ### Limitations
 
@@ -141,7 +147,7 @@ toXdgTrigger('Ctrl+Foo')          // throws TypeError
  * Registers a global shortcut.
  * @param {string} accelerator - Accelerator string (e.g. `CmdOrCtrl+Shift+H`).
  * @param {() => void} callback - Called when the shortcut is activated.
- * @param {ShortcutOptions} [options] - Registration options.
+ * @param {ShortcutOptions} [options] - Registration options (`description`, `trigger`).
  * @returns {Promise<boolean>} Whether the shortcut was bound by the portal.
  */
 register(accelerator, callback, options)

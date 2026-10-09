@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Wayland Global Shortcut Sample</title>
+  <style>
+    body { font-family: sans-serif; margin: 16px; }
+    label { display: block; margin-top: 12px; }
+    input, select { margin-top: 4px; width: 100%; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <h3>Focus another app and press Ctrl+Shift+H or Ctrl+Shift+J</h3>
+  <p>Use the Shortcuts menu to unregister or register them again.</p>
+
+  <label>
+    Trigger
+    <select id="trigger">
+      <option value="release">release</option>
+      <option value="press">press</option>
+    </select>
+  </label>
+
+  <label>
+    Text field (with <code>press</code>, the last key of the shortcut may get stuck here)
+    <input id="text" type="text" autofocus>
+  </label>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const trigger = document.getElementById('trigger');
+    const text = document.getElementById('text');
+
+    trigger.addEventListener('change', async () => {
+      trigger.disabled = true;
+      await ipcRenderer.invoke('set-trigger', trigger.value);
+      trigger.disabled = false;
+      text.focus();
+    });
+  </script>
+</body>
+</html>
