@@ -1,17 +1,21 @@
 /**
  * Sample usage with Electron. On a Wayland session, run with `npm run sample` (forces XWayland).
- * A `.desktop` file matching the app ID must be installed for the portal to accept the shortcuts:
- * ~/.local/share/applications/com.github.ecromaneli.wayland-global-shortcut.desktop
+ * The `.desktop` file matching the app ID, required by the portal to accept the shortcuts, is
+ * installed automatically in ~/.local/share/applications (see `desktop-entry.js`).
  *
- * Use the "Shortcuts" menu to unregister and register the shortcuts again.
+ * Use the "Shortcuts" menu to unregister and register the shortcuts again, and the "Trigger"
+ * select to switch between calling the callbacks on press or release.
  */
-const { app, BrowserWindow, Menu } = require('electron');
+const path = require('node:path');
+const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const { WaylandGlobalShortcut, toXdgTrigger } = require('wayland-global-shortcut');
+const { installDesktopEntry } = require('./desktop-entry');
 
 const APP_ID = 'com.github.ecromaneli.wayland-global-shortcut';
 const shortcuts = new WaylandGlobalShortcut({ appId: APP_ID });
 
 let window;
+let trigger = 'release';
 
 const SAMPLE_SHORTCUTS = [
   {
@@ -27,8 +31,8 @@ const SAMPLE_SHORTCUTS = [
 ];
 
 async function register({ accelerator, description, callback }) {
-  const ok = await shortcuts.register(accelerator, callback, { description });
-  console.log(`${accelerator} registered:`, ok, shortcuts.isRegistered(accelerator));
+  const ok = await shortcuts.register(accelerator, callback, { description, trigger });
+  console.log(`${accelerator} registered on ${trigger}:`, ok, shortcuts.isRegistered(accelerator));
   updateMenu();
 }
 
@@ -37,8 +41,8 @@ async function registerAll() {
   if (!missing.length) { return; }
   const ok = await shortcuts.registerAll(missing.map((s) => s.accelerator), () => {
     console.log('Shortcut from registerAll activated');
-  }, { description: 'Registered with registerAll' });
-  console.log(`${missing.map((s) => s.accelerator).join(', ')} registered with registerAll:`, ok);
+  }, { description: 'Registered with registerAll', trigger });
+  console.log(`${missing.map((s) => s.accelerator).join(', ')} registered with registerAll on ${trigger}:`, ok);
   updateMenu();
 }
 
@@ -52,6 +56,15 @@ async function unregisterAll() {
   await shortcuts.unregisterAll();
   console.log('All shortcuts unregistered');
   updateMenu();
+}
+
+/** Registers the registered shortcuts again with the new trigger. */
+async function setTrigger(value) {
+  trigger = value;
+  for (const shortcut of SAMPLE_SHORTCUTS.filter((s) => shortcuts.isRegistered(s.accelerator))) {
+    await shortcuts.unregister(shortcut.accelerator);
+    await register(shortcut);
+  }
 }
 
 function updateMenu() {
@@ -73,14 +86,21 @@ function updateMenu() {
 }
 
 app.whenReady().then(async () => {
-  window = new BrowserWindow({ width: 400, height: 200 });
-  window.loadURL('data:text/html,<h3>Focus another app and press Ctrl+Shift+H or Ctrl+Shift+J</h3>'
-    + '<p>Use the Shortcuts menu to unregister or register them again.</p>');
+  ipcMain.handle('set-trigger', (_, value) => setTrigger(value));
+
+  window = new BrowserWindow({
+    width: 500,
+    height: 320,
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
+  });
+  window.loadFile(path.join(__dirname, 'sample.html'));
   updateMenu();
 
   for (const accelerator of ['CmdOrCtrl+Shift+H', 'Alt+Plus', 'Super+num5', 'AltGr+A']) {
     console.log(`${accelerator} => ${toXdgTrigger(accelerator)}`);
   }
+
+  await installDesktopEntry(APP_ID, __filename);
 
   for (const shortcut of SAMPLE_SHORTCUTS) {
     await register(shortcut);

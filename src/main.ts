@@ -4,7 +4,10 @@ import { toXdgTrigger } from './XdgTrigger';
 type PortalResults = Record<string, unknown>;
 type PortalResponse = { code: number, results: PortalResults };
 type PendingRequest = { resolve: (response: PortalResponse) => void, reject: (error: Error) => void };
-type Shortcut = { id: string, description: string, callback: () => void };
+type Shortcut = { id: string, description: string, trigger: ShortcutTrigger, callback: () => void };
+
+/** When the shortcut callback is called: when the keys are pressed or released. */
+export type ShortcutTrigger = 'press' | 'release';
 
 /** Options for {@link WaylandGlobalShortcut}. */
 export interface WaylandGlobalShortcutOptions {
@@ -22,6 +25,15 @@ export interface WaylandGlobalShortcutOptions {
 export interface ShortcutOptions {
   /** Human readable description shown by the desktop. Defaults to the accelerator. */
   description?: string;
+  /**
+   * When the callback is called. Defaults to `release`.
+   *
+   * The compositor keeps the key events of an active shortcut, so a window focused while the
+   * keys are still held down may never receive the key release and the last key gets stuck
+   * (e.g. the `W` of `Ctrl+W` repeating in a text field). Use `press` only when the callback
+   * does not change the focus.
+   */
+  trigger?: ShortcutTrigger;
 }
 
 const DBUS_NAME = 'org.freedesktop.DBus';
@@ -86,7 +98,8 @@ export class WaylandGlobalShortcut {
       for (const accelerator of accelerators) {
         const id = toXdgTrigger(accelerator);
         if (!id || next.some((s) => s.id === id)) { return false; }
-        next.push({ id, description: options.description || accelerator, callback });
+        const { description = accelerator, trigger = 'release' } = options;
+        next.push({ id, description: description || accelerator, trigger, callback });
       }
       return this.commit(next);
     });
@@ -185,6 +198,7 @@ export class WaylandGlobalShortcut {
     try {
       await this.addMatch(bus, REQUEST_IFACE, 'Response');
       await this.addMatch(bus, SHORTCUTS_IFACE, 'Activated');
+      await this.addMatch(bus, SHORTCUTS_IFACE, 'Deactivated');
       await this.registerAppId(bus);
     } catch (e) {
       this.disconnect(bus, e as Error);
@@ -298,11 +312,13 @@ export class WaylandGlobalShortcut {
       return;
     }
 
-    if (msg.interface === SHORTCUTS_IFACE && msg.member === 'Activated') {
+    if (msg.interface === SHORTCUTS_IFACE && (msg.member === 'Activated' || msg.member === 'Deactivated')) {
       const [sessionPath, id] = msg.body as [string, string];
       if (sessionPath !== this.sessionPath) { return; }
+      const shortcut = this.shortcuts.get(id);
+      if (!shortcut || shortcut.trigger !== (msg.member === 'Activated' ? 'press' : 'release')) { return; }
       try {
-        this.shortcuts.get(id)?.callback();
+        shortcut.callback();
       } catch (e) {
         console.error(LOG_PREFIX, `Error on shortcut "${id}" callback:`, e);
       }
